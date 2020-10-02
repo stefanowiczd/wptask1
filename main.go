@@ -11,6 +11,10 @@ import (
 	"github.com/go-chi/render"
 )
 
+// Source:
+// - https://github.com/go-chi/chi
+// - https://github.com/go-chi/chi/blob/master/_examples/rest/main.go
+
 // Test data structure
 type Item struct {
 	id string `json:"id"`
@@ -29,6 +33,12 @@ var ErrNotFound = &ErrResponse{HTTPStatusCode: 404, StatusText: "Resource not fo
 var ErrNoError = &ErrResponse{HTTPStatusCode: 200, StatusText: "OK"}
 
 func main() {
+
+	r := registerRoutes()
+	http.ListenAndServe(":3333", r)
+}
+
+func registerRoutes() http.Handler {
 	r := chi.NewRouter()
 
 	// A good base middleware stack
@@ -46,24 +56,23 @@ func main() {
 		w.Write([]byte("hi"))
 	})
 
-	// RESTy routes for "articles" resource
-	r.Route("/api", func(r chi.Router) { // r.Route("/articles", func(r chi.Router) {
+	// RESTy routes for "/api/feature" resource
+	r.Route("/api/fetcher", func(r chi.Router) {
 
 		//r.With(paginate).Get("/", listArticles)             // GET /api/fetcher
-		r.Get("/", listURLs) // GET /api/fetcher
+		r.Get("/", listItems)   // GET /api/fetcher
+		r.Post("/", createItem) // POST /api
 
 		// Subrouters:
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(itemCtx)
 			//r.Use(ArticleCtx)
-			r.Get("/", getItem)       // GET /articles/123  | GET /api/fetcher
-			r.Put("/", createItem)    // PUT /articles/123
-			r.Delete("/", deleteItem) // DELETE /articles/123
+			r.Put("/", createItem)            // PUT /api/fetcher/{id}
+			r.Delete("/", deleteItem)         // DELETE /api/fetcher/{id}
+			r.Get("/history", getHistoryItem) // PUT /api/fetcher/{id}/history
 		})
-
 	})
-
-	http.ListenAndServe(":3333", r)
+	return r
 }
 
 // paginate is a stub, but very possible to implement middleware logic
@@ -76,7 +85,12 @@ func paginate(next http.Handler) http.Handler {
 	})
 }
 
-func listURLs(w http.ResponseWriter, r *http.Request) {
+func listItems(w http.ResponseWriter, r *http.Request) {
+
+	render.Render(w, r, ErrNoError)
+}
+
+func getHistoryItem(w http.ResponseWriter, r *http.Request) {
 
 	render.Render(w, r, ErrNoError)
 }

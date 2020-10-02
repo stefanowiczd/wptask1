@@ -6,6 +6,8 @@ import (
 	"github.com/go-chi/render"
 )
 
+//var m map[string]int = map[int]string{200: "", 400: "Invalid request"
+
 // ErrResponse is a type to represent API errors and corresponding message
 type ErrResponse struct {
 	Err            error `json:"-"` // low-level runtime error
@@ -33,11 +35,12 @@ func ErrInvalidRequest(err error) render.Renderer {
 }
 
 // ErrRender is a plaveholder to keep detailed info about error returned by the application
-func ErrRender(err error) render.Renderer {
+func ErrRender(err error, errCode int, errStatus string) render.Renderer {
+
 	return &ErrResponse{
 		Err:            err,
-		HTTPStatusCode: 422,
-		StatusText:     "Error rendering response.",
+		HTTPStatusCode: errCode,
+		StatusText:     errStatus,
 		ErrorText:      err.Error(),
 	}
 }
