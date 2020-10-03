@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -34,6 +35,10 @@ var ErrNoError = &ErrResponse{HTTPStatusCode: 200, StatusText: "OK"}
 
 func main() {
 
+	if _, err := InitDb(); err != nil {
+		fmt.Println("FATAL error")
+		os.Exit(1)
+	}
 	r := registerRoutes()
 	http.ListenAndServe(":3333", r)
 }
@@ -67,7 +72,6 @@ func registerRoutes() http.Handler {
 		r.Route("/{id}", func(r chi.Router) {
 			r.Use(itemCtx)
 			//r.Use(ArticleCtx)
-			r.Put("/", createItem)            // PUT /api/fetcher/{id}
 			r.Delete("/", deleteItem)         // DELETE /api/fetcher/{id}
 			r.Get("/history", getHistoryItem) // PUT /api/fetcher/{id}/history
 		})
