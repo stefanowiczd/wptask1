@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -127,10 +128,10 @@ func itemCtx(next http.Handler) http.Handler {
 }
 
 func deleteItem(w http.ResponseWriter, r *http.Request) {
+	item := r.Context().Value(contextKeyID).(*Item)
 
-	id := r.Context().Value(contextKeyID).(*Item)
-
-	fmt.Fprintf(w, "delete item: {%s}", id)
+	id, _ := strconv.Atoi(item.ID) // TODO handle errors
+	DeleteRow(db, sqlURLDel, id)
 	render.Render(w, r, ErrNoError)
 }
 
@@ -142,10 +143,14 @@ func createItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, "create item: {url:%s} {interval:%d}", item.URL, item.Interval)
+	//fmt.Fprintf(w, "create item: {url:%s} {interval:%d}", item.URL, item.Interval)
 
-	//InsertRow(db, sqlURLIns)0000
-	render.Render(w, r, ErrNoError)
+	if id, err := InsertRow(db, sqlURLSel, sqlURLIns, sqlURLUpd, *item); err != nil {
+		render.Render(w, r, ErrNotFound) // TODO adjust error
+	} else {
+		w.Write([]byte(fmt.Sprintf("{\"id\":%d}\n", id)))
+	}
+	return
 }
 
 func getItem(w http.ResponseWriter, r *http.Request) {

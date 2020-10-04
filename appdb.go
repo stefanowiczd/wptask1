@@ -18,8 +18,10 @@ const (
 		url TEXT NOT NULL,
 		interval INTEGER NOT NULL);`
 
-	sqlURLSelMaxID = "SELECT MAX(id) FROM urls_tab;"
-	sqlURLIns      = `INSERT INTO urls_tab (url, interval) VALUES (?, ?);`
+	sqlURLSel = "SELECT id FROM urls_tab WHERE url=?;"
+	sqlURLIns = `INSERT INTO urls_tab (url, interval) VALUES (?, ?);`
+	sqlURLDel = `DELETE FROM urls_tab WHERE ID=?;`
+	sqlURLUpd = `UPDATE urls_tab SET interval=? WHERE url=?;`
 
 	sqlURLHistCreate = `CREATE TABLE IF NOT EXISTS urls_history_tab (
 		id INTEGER NOT NULL,
@@ -61,19 +63,56 @@ func InitDb() (*sql.DB, error) {
 }
 
 // InsertRow adds a new entry into URLs table
-func InsertRow(db *sql.DB, s string, rd ReqData) (int, error) {
-	if _, err := db.Exec(s, rd.URL, rd.Interval); err != nil {
-		return -1, fmt.Errorf("could not add new db entry {%+v}", err)
+func InsertRow(db *sql.DB, sqlSel, sqlIns, sqlUpd string, item ItemAdd) (int, error) {
+	// Check if URL is already in DB and eventually return its ID
+	rows, err := db.Query(sqlSel, item.URL)
+	if err != nil {
+		return -1, fmt.Errorf("could not exec sql select query {%+v}", err)
 	}
+	defer rows.Close()
 
 	id := -1
-	err := db.QueryRow(sqlURLSelMaxID).Scan(&id)
-	switch err {
-	case nil:
-		return id, nil
-	case sql.ErrNoRows:
-		return -1, fmt.Errorf("could not get index info")
-	default:
-		return -1, fmt.Errorf("could not finalize add operation")
+	for rows.Next() {
+		rows.Scan(&id)
 	}
+
+	if id == -1 { // Add new entry
+		if _, err := db.Exec(sqlIns, item.URL, item.Interval); err != nil {
+			return -1, fmt.Errorf("could not add new db entry {%+v}", err)
+		}
+		// Check what ID was set
+		rows, err := db.Query(sqlSel, item.URL)
+		if err != nil {
+			return -1, fmt.Errorf("could not exec sql select query {%+v}", err)
+		}
+		defer rows.Close()
+
+		id = -1
+		for rows.Next() {
+			rows.Scan(&id)
+		}
+	} else { // Update old entry
+		fmt.Printf("Update {%s}", sqlUpd)
+		if _, err := db.Exec(sqlUpd, item.Interval, item.URL); err != nil {
+			return -1, fmt.Errorf("could not add new db entry {%+v}", err)
+		}
+	}
+	return id, nil
+}
+
+// DeleteRow removes entry from db by ID
+func DeleteRow(db *sql.DB, sqlDel string, id int) (int, error) {
+	if _, err := db.Exec(sqlDel, id); err != nil {
+		fmt.Printf("Colud not delete row - %s\n", err.Error())
+		return -1, fmt.Errorf("could not remove db entry {%+v}", err)
+	}
+	return 0, nil
+}
+
+// UpdateRow update database entry
+func UpdateRow(db *sql.DB, sqlUpd string, rd ReqData) (int, error) {
+	if _, err := db.Exec(sqlUpd, rd.URL, rd.Interval); err != nil {
+		return -1, fmt.Errorf("could not removupdate db entry {%+v}", err)
+	}
+	return 0, nil
 }
