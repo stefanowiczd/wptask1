@@ -18,7 +18,13 @@ import (
 
 // Test data structure
 type Item struct {
-	id string `json:"id"`
+	ID string `json:"id"`
+}
+
+// ItemAdd is a placeholder for POST request data
+type ItemAdd struct {
+	URL      string `json:"url"`
+	Interval int    `json:"interval"`
 }
 
 type contextKey string
@@ -34,9 +40,10 @@ var ErrNotFound = &ErrResponse{HTTPStatusCode: 404, StatusText: "Resource not fo
 var ErrNoError = &ErrResponse{HTTPStatusCode: 200, StatusText: "OK"}
 
 func main() {
-
-	if _, err := InitDb(); err != nil {
-		fmt.Println("FATAL error")
+	var err error
+	db, err = InitDb()
+	if err != nil {
+		fmt.Printf("FATAL error {%+v}", err)
 		os.Exit(1)
 	}
 	r := registerRoutes()
@@ -58,6 +65,7 @@ func registerRoutes() http.Handler {
 	r.Use(middleware.Timeout(5 * time.Second))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("{%+v}", r)
 		w.Write([]byte("hi"))
 	})
 
@@ -90,7 +98,7 @@ func paginate(next http.Handler) http.Handler {
 }
 
 func listItems(w http.ResponseWriter, r *http.Request) {
-
+	fmt.Printf("{%+v}", r)
 	render.Render(w, r, ErrNoError)
 }
 
@@ -127,10 +135,16 @@ func deleteItem(w http.ResponseWriter, r *http.Request) {
 }
 
 func createItem(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("{%+v}", r)
+	item := &ItemAdd{}
+	if err := render.DecodeJSON(r.Body, &item); err != nil {
+		render.Render(w, r, ErrNotFound) // TODO adjust error
+		return
+	}
 
-	id := r.Context().Value(contextKeyID).(*Item)
+	fmt.Fprintf(w, "create item: {url:%s} {interval:%d}", item.URL, item.Interval)
 
-	fmt.Fprintf(w, "create item: {%s}", id)
+	//InsertRow(db, sqlURLIns)0000
 	render.Render(w, r, ErrNoError)
 }
 
